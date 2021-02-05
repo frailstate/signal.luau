@@ -1,4 +1,9 @@
-local Signal = {}
+local Signal = { 
+	__tostring = function(ctx)
+		return ctx.id
+	end
+}
+Signal.__index = Signal
 
 -- // @constructor(eventName: string): Signal
 function Signal.new(name)
@@ -7,12 +12,7 @@ function Signal.new(name)
 		connections = {}
 	}
 
-	return setmetatable(newSignal, {
-		__index = Signal, 
-		__tostring = function()
-			return newSignal.id
-		end
-	})
+	return setmetatable(newSignal, Signal)
 end
 
 -- // @method Signal:Connect(handler: (args...) => void): Connection
@@ -20,23 +20,22 @@ function Signal:Connect(handler)
 	handler = type(handler) == 'function' and handler or error('Signal:Connect :: Argument 1 must be a function.')
 
 	local newConnection = {
-		_handler = handler,
 		Connected = true,
 
 		Disconnect = function(connection, s)
-			table.remove(self.connections, table.find(self.connections, connection))
+			self.connections[connection] = nil
 			connection.Connected = false
 		end
 	}
 
-	self.connections[#self.connections + 1] = newConnection
+	self.connections[newConnection] = handler
 	return newConnection
 end
 
 -- // @method Signal:Fire(args...)
 function Signal:Fire(...)
-	for _, connection in ipairs(self.connections) do
-		connection._handler(...)
+	for connection, handler in pairs(self.connections) do
+	    handler(...)
 	end
 end
 
@@ -44,7 +43,8 @@ end
 function Signal:Wait()
 	local thread, conn = coroutine.running()
 	conn = self:Connect(function(...)
-		conn:Disconnect(); conn = nil
+		conn:Disconnect()
+		conn = nil
 		coroutine.resume(thread, ...)
 	end)
 	return coroutine.yield()
