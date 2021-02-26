@@ -22,7 +22,7 @@ function Signal:Connect(handler)
 	local newConnection = {
 		Connected = true,
 
-		Disconnect = function(connection, s)
+		Disconnect = function(connection)
 			self.connections[connection] = nil
 			connection.Connected = false
 		end
